@@ -9,34 +9,37 @@ jobs:
   build:
     runs-on: ubuntu-latest
 
+    # Usa imagem com Gradle 8.7 + JDK 17 já instalado
+    container:
+      image: gradle:8.7-jdk17
+
+    env:
+      ANDROID_SDK_ROOT: /android-sdk
+      ANDROID_HOME: /android-sdk
+      PATH: /android-sdk/platform-tools:/android-sdk/cmdline-tools/latest/bin:/android-sdk/cmdline-tools/bin:$PATH
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v4
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+      - name: Install Android SDK commandline-tools
+        run: |
+          apt-get update
+          apt-get install -y wget unzip
+          mkdir -p /android-sdk/cmdline-tools
+          cd /android-sdk
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-12266719_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d cmdline-tools
+          mv /android-sdk/cmdline-tools/cmdline-tools /android-sdk/cmdline-tools/latest
+          yes | /android-sdk/cmdline-tools/latest/bin/sdkmanager --licenses
 
-      # Instala o Android SDK e aceita licenças
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-        with:
-          packages: |
-            platforms;android-34
-            build-tools;34.0.0
-            platform-tools
+      - name: Install required SDK packages
+        run: |
+          yes | sdkmanager "platform-tools" "platforms;android-34" "build-tools;34.0.0"
 
-      # Usa o Gradle “global” (sem wrapper) e ativa cache automático
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      # Compila APK debug
       - name: Build Debug APK
         run: gradle :app:assembleDebug --no-daemon
 
-      # Publica o APK como artefato para download
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
