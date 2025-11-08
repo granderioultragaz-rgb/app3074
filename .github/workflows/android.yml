@@ -15,6 +15,12 @@ jobs:
       PATH: /usr/local/lib/android/sdk/platform-tools:/usr/local/lib/android/sdk/cmdline-tools/latest/bin:$PATH
 
     steps:
+      # Garante 'tar', 'unzip' e 'curl' antes do checkout (alguns runners podem vir sem)
+      - name: Ensure base tools (tar, unzip, curl)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y tar unzip curl
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -29,18 +35,15 @@ jobs:
         run: |
           sudo mkdir -p $ANDROID_SDK_ROOT
           cd $ANDROID_SDK_ROOT
-          sudo apt-get update
-          sudo apt-get install -y unzip curl
           curl -sSL -o cmdline-tools.zip https://dl.google.com/android/repository/commandlinetools-linux-12266719_latest.zip
           sudo mkdir -p $ANDROID_SDK_ROOT/cmdline-tools
           sudo unzip -q cmdline-tools.zip -d $ANDROID_SDK_ROOT/cmdline-tools
           sudo rm -f cmdline-tools.zip
-          # mover para o layout "latest"
           sudo mkdir -p $ANDROID_SDK_ROOT/cmdline-tools/latest
           sudo mv $ANDROID_SDK_ROOT/cmdline-tools/cmdline-tools/* $ANDROID_SDK_ROOT/cmdline-tools/latest/ || true
           yes | sdkmanager --sdk_root=$ANDROID_SDK_ROOT --licenses
 
-      # Instala os pacotes necessários (com retry pra evitar falhas de índice)
+      # Pacotes necessários do SDK (com retry para evitar instabilidade do índice)
       - name: Install required SDK packages
         run: |
           set -e
@@ -49,9 +52,9 @@ jobs:
             echo "retry $i…"
             sleep 5
           done
-          sdkmanager --sdk_root=$ANDROID_SDK_ROOT --list | head -n 100 || true
+          sdkmanager --sdk_root=$ANDROID_SDK_ROOT --list | head -n 80 || true
 
-      # Instala Gradle 8.7 via SDKMAN (pois o projeto não tem gradlew)
+      # Instala Gradle 8.7 via SDKMAN (não temos gradlew no repo)
       - name: Install Gradle 8.7
         run: |
           curl -s "https://get.sdkman.io" | bash
@@ -59,13 +62,11 @@ jobs:
           sdk install gradle 8.7
           gradle --version
 
-      # Build do APK debug usando o Gradle instalado
       - name: Build Debug APK
         run: |
           source "$HOME/.sdkman/bin/sdkman-init.sh"
           gradle :app:assembleDebug --no-daemon
 
-      # Publica o APK
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
