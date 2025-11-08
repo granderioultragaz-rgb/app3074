@@ -1,0 +1,26 @@
+name: Test Runner Env
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Show tools
+        run: |
+          set -x
+          whoami
+          uname -a
+          which bash || true
+          bash --version || true
+          which tar || true
+          tar --version || true
+          which apt-get || true
+          apt-get --version || true
+          which curl || true
+          which unzip || true
+      - name: Echo OK
+        run: echo "runner está OK"
